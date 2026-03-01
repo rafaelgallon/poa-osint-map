@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POA · OSINT · Infraestrutura de Segurança</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root {
+  --bg:#080b0e;--border:#1a2332;
+  --green:#00ff88;--amber:#ffaa00;--red:#ff3a3a;--blue:#00aaff;--purple:#aa44ff;
+  --text:#c8d8e8;--dim:#4a6070;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;overflow:hidden;height:100vh;width:100vw}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:9999}
+#map{position:absolute;inset:0;z-index:1}
+/* HEADER */
+#hdr{position:fixed;top:0;left:0;right:0;height:50px;background:rgba(8,11,14,.96);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:14px;z-index:1000;backdrop-filter:blur(10px)}
+.logo{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;color:var(--green);letter-spacing:3px;text-shadow:0 0 12px rgba(0,255,136,.4)}
+.hd{width:1px;height:22px;background:var(--border)}
+.hm{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim)}
+.hm b{color:var(--amber);font-weight:400}
+.pill{margin-left:auto;display:flex;align-items:center;gap:8px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--green)}
+.pdot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pa 2s ease-in-out infinite;box-shadow:0 0 10px rgba(0,255,136,.4)}
+@keyframes pa{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+/* PANEL */
+#pnl{position:fixed;top:50px;left:0;bottom:0;width:270px;background:rgba(8,11,14,.94);border-right:1px solid var(--border);z-index:1000;display:flex;flex-direction:column;backdrop-filter:blur(14px);overflow:hidden}
+#pnl::before{content:'';position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,255,136,.3),transparent);animation:sl 4s ease-in-out infinite;z-index:10;pointer-events:none}
+@keyframes sl{0%{top:0;opacity:.5}100%{top:100%;opacity:0}}
+.ps{padding:13px 15px;border-bottom:1px solid var(--border)}
+.st{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.st::after{content:'';flex:1;height:1px;background:var(--border)}
+/* RADAR */
+#rw{padding:13px 15px;border-bottom:1px solid var(--border);display:flex;justify-content:center}
+.rsv{width:74px;height:74px;opacity:.85}
+@keyframes sw{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.rs{animation:sw 3s linear infinite;transform-origin:40px 40px}
+/* STATS */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.sb{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:3px;padding:9px 11px;position:relative;overflow:hidden;transition:border-color .2s}
+.sb:hover{border-color:rgba(255,255,255,.1)}
+.sb::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%}
+.sb.c::before{background:var(--green);box-shadow:0 0 8px rgba(0,255,136,.4)}
+.sb.r::before{background:var(--amber)}
+.sb.s::before{background:var(--blue)}
+.sb.t::before{background:var(--purple)}
+.sv{font-family:'Orbitron',monospace;font-size:20px;font-weight:700;line-height:1;margin-bottom:3px}
+.sb.c .sv{color:var(--green)}.sb.r .sv{color:var(--amber)}.sb.s .sv{color:var(--blue)}.sb.t .sv{color:var(--purple)}
+.sl2{font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase}
+/* LAYERS */
+.lt{display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer;border-radius:3px}
+.lt:hover .ln{color:var(--text)}
+.tsw{width:32px;height:17px;border-radius:9px;background:var(--border);position:relative;transition:background .2s;flex-shrink:0;border:1px solid rgba(255,255,255,.05)}
+.tsw.on{background:rgba(0,255,136,.15);border-color:var(--green);box-shadow:0 0 8px rgba(0,255,136,.2)}
+.tsw.ao{background:rgba(255,170,0,.15);border-color:var(--amber)}
+.tsw.bo{background:rgba(0,170,255,.15);border-color:var(--blue)}
+.tsw.po{background:rgba(170,68,255,.15);border-color:var(--purple)}
+.tk{width:11px;height:11px;border-radius:50%;background:var(--dim);position:absolute;top:2px;left:2px;transition:all .2s}
+.tsw.on .tk,.tsw.ao .tk,.tsw.bo .tk,.tsw.po .tk{left:17px;background:#fff}
+.li{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.ln{font-size:12px;font-weight:600;color:var(--dim);transition:color .2s}
+.lt.active .ln{color:var(--text)}
+.lc{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim)}
+/* INFO */
+#ib{flex:1;overflow-y:auto}
+#ib::-webkit-scrollbar{width:3px}
+#ib::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+#ic{padding:14px 15px}
+.ip{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);line-height:1.9}
+.if{margin-bottom:9px}
+.ik{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:2px}
+.iv{font-size:12px;font-weight:600;color:var(--text)}
+.bd{display:inline-block;padding:2px 7px;border-radius:2px;font-size:9px;font-family:'Share Tech Mono',monospace;letter-spacing:1px;text-transform:uppercase}
+.bg{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3)}
+.ba{background:rgba(255,170,0,.1);color:var(--amber);border:1px solid rgba(255,170,0,.3)}
+.bb{background:rgba(0,170,255,.1);color:var(--blue);border:1px solid rgba(0,170,255,.3)}
+.br{background:rgba(255,58,58,.1);color:var(--red);border:1px solid rgba(255,58,58,.3)}
+/* FOOTER */
+#ftr{position:fixed;bottom:0;left:270px;right:0;height:26px;background:rgba(8,11,14,.96);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:20px;z-index:1000}
+.fi{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);display:flex;align-items:center;gap:5px}
+.fi b{color:var(--text);font-weight:400}
+#crd{margin-left:auto;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim)}
+/* ZOOM */
+#zc{position:fixed;right:14px;bottom:40px;display:flex;flex-direction:column;gap:3px;z-index:1000}
+.zb{width:30px;height:30px;background:rgba(13,17,23,.95);border:1px solid var(--border);color:var(--dim);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;transition:all .2s;border-radius:3px;user-select:none;line-height:1}
+.zb:hover{color:var(--green);border-color:var(--green);box-shadow:0 0 10px rgba(0,255,136,.3)}
+/* NOTICE */
+#notice{position:fixed;bottom:34px;left:284px;z-index:1000;background:rgba(255,170,0,.07);border:1px solid rgba(255,170,0,.22);border-radius:3px;padding:4px 10px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--amber);letter-spacing:1px;pointer-events:none}
+/* LEAFLET */
+.leaflet-container{background:#080b0e;font-family:'Rajdhani',sans-serif}
+.leaflet-control-zoom{display:none}
+.leaflet-popup-content-wrapper{background:rgba(10,14,20,.98);border:1px solid var(--border);border-radius:3px;color:var(--text);box-shadow:0 4px 32px rgba(0,0,0,.9);padding:0}
+.leaflet-popup-content{margin:0;font-family:'Rajdhani',sans-serif}
+.leaflet-popup-tip-container{display:none}
+.leaflet-popup-close-button{color:var(--dim)!important;font-size:18px!important;top:5px!important;right:7px!important}
+.pi{padding:12px 14px;min-width:200px}
+.pt{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
+.pti{font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.2}
+.pr{display:flex;justify-content:space-between;gap:12px;margin-bottom:4px}
+.pr .k{color:var(--dim);font-family:'Share Tech Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.pr .v{color:var(--text);font-weight:600;font-size:11px;text-align:right}
+.psrc{margin-top:8px;padding-top:7px;border-top:1px solid var(--border);font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim)}
+/* MARKERS */
+.mk{display:flex;align-items:center;justify-content:center;border-radius:50%;border:1.5px solid;font-size:11px}
+.mc{background:rgba(0,255,136,.12);border-color:var(--green);box-shadow:0 0 8px rgba(0,255,136,.3);color:var(--green)}
+.mr{background:rgba(255,170,0,.12);border-color:var(--amber);box-shadow:0 0 8px rgba(255,170,0,.3);color:var(--amber)}
+.ms{background:rgba(0,170,255,.12);border-color:var(--blue);box-shadow:0 0 8px rgba(0,170,255,.3);color:var(--blue)}
+.mt{background:rgba(170,68,255,.12);border-color:var(--purple);box-shadow:0 0 8px rgba(170,68,255,.3);color:var(--purple)}
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <div class="logo">POA // OSINT</div>
+  <div class="hd"></div>
+  <div class="hm">INFRA_SEG // <b>PORTO ALEGRE · RS</b></div>
+  <div class="hd"></div>
+  <div class="hm">SISTEMA: <b>CEIC / EPTC / DETRAN</b></div>
+  <div class="pill">
+    <div class="pdot"></div>
+    <span>MONITORAMENTO ATIVO</span>
+    <div class="hd" style="margin:0 8px"></div>
+    <span id="clk"></span>
+  </div>
+</div>
+
+<div id="pnl">
+  <div id="rw">
+    <svg class="rsv" viewBox="0 0 80 80">
+      <circle cx="40" cy="40" r="38" fill="none" stroke="#1a2332" stroke-width="1"/>
+      <circle cx="40" cy="40" r="28" fill="none" stroke="#1a2332" stroke-width=".5"/>
+      <circle cx="40" cy="40" r="18" fill="none" stroke="#1a2332" stroke-width=".5"/>
+      <circle cx="40" cy="40" r="8"  fill="none" stroke="#1a2332" stroke-width=".5"/>
+      <line x1="40" y1="2"  x2="40" y2="78" stroke="#1a2332" stroke-width=".5"/>
+      <line x1="2"  y1="40" x2="78" y2="40" stroke="#1a2332" stroke-width=".5"/>
+      <g class="rs">
+        <path d="M40,40 L40,2 A38,38 0 0,1 74,62 Z" fill="url(#sg)" opacity=".35"/>
+        <line x1="40" y1="40" x2="40" y2="2" stroke="#00ff88" stroke-width="1.5" opacity=".9"/>
+      </g>
+      <circle cx="40" cy="40" r="2.5" fill="#00ff88"/>
+      <circle cx="55" cy="22" r="2"   fill="#00ff88" opacity=".7"/>
+      <circle cx="28" cy="35" r="1.5" fill="#ffaa00" opacity=".8"/>
+      <circle cx="52" cy="55" r="2"   fill="#00aaff" opacity=".6"/>
+      <circle cx="22" cy="58" r="1.5" fill="#aa44ff" opacity=".7"/>
+      <defs>
+        <radialGradient id="sg" cx="0%" cy="50%" r="100%">
+          <stop offset="0%"   stop-color="#00ff88" stop-opacity=".6"/>
+          <stop offset="100%" stop-color="#00ff88" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="ps">
+    <div class="st">Contagem de Assets</div>
+    <div class="sg">
+      <div class="sb c"><div class="sv" id="cc">0</div><div class="sl2">Câmeras</div></div>
+      <div class="sb r"><div class="sv" id="rc">0</div><div class="sl2">Radares</div></div>
+      <div class="sb s"><div class="sv" id="sc">0</div><div class="sl2">Sensores</div></div>
+      <div class="sb t"><div class="sv" id="tc">0</div><div class="sl2">Torres Rádio</div></div>
+    </div>
+  </div>
+
+  <div class="ps">
+    <div class="st">Camadas</div>
+    <div class="lt active" onclick="tl('cam',this)">
+      <div class="tsw on" id="sw-cam"><div class="tk"></div></div>
+      <span class="li">📷</span>
+      <div><div class="ln">Câmeras de Segurança</div><div class="lc">CEIC · SMSU · OSM</div></div>
+    </div>
+    <div class="lt active" onclick="tl('radar',this)">
+      <div class="tsw ao" id="sw-radar"><div class="tk"></div></div>
+      <span class="li">📡</span>
+      <div><div class="ln">Radares de Velocidade</div><div class="lc">EPTC · DETRAN-RS</div></div>
+    </div>
+    <div class="lt active" onclick="tl('sensor',this)">
+      <div class="tsw bo" id="sw-sensor"><div class="tk"></div></div>
+      <span class="li">🔵</span>
+      <div><div class="ln">Sensores de Tráfego</div><div class="lc">EPTC · CTA</div></div>
+    </div>
+    <div class="lt active" onclick="tl('radio',this)">
+      <div class="tsw po" id="sw-radio"><div class="tk"></div></div>
+      <span class="li">📶</span>
+      <div><div class="ln">Torres / Rádio</div><div class="lc">ANATEL · OSM</div></div>
+    </div>
+  </div>
+
+  <div style="padding:12px 15px 5px;border-bottom:1px solid var(--border)">
+    <div class="st" style="margin-bottom:0">Detalhes do Ponto</div>
+  </div>
+  <div id="ib">
+    <div id="ic">
+      <div class="ip">&gt; Clique em qualquer<br>&nbsp;&nbsp;marcador para ver<br>&nbsp;&nbsp;os detalhes...<br><br>&gt; Use os toggles para<br>&nbsp;&nbsp;filtrar camadas<br><br>&gt; Scroll para zoom</div>
+    </div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<div id="zc">
+  <div class="zb" onclick="map.zoomIn()">+</div>
+  <div class="zb" onclick="map.zoomOut()">−</div>
+</div>
+
+<div id="ftr">
+  <div class="fi">ZOOM: <b id="zv">13</b></div>
+  <div class="fi">CIDADE: <b>PORTO ALEGRE / RS</b></div>
+  <div class="fi">PROJ: <b>WGS84</b></div>
+  <div id="crd">LAT — · LNG —</div>
+</div>
+
+<div id="notice">⚠ DADOS DE EXEMPLO — substitua pelo levantamento real</div>
+
+<script>
+const map=L.map('map',{center:[-30.0346,-51.2177],zoom:13,zoomControl:false,attributionControl:false});
+
+// Tile providers em ordem de preferência (dark → fallbacks)
+const tileProviders = [
+  {
+    url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
+    label: 'Stadia Dark'
+  },
+  {
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+    opts: { subdomains: 'abcd' },
+    label: 'CartoDB Dark'
+  },
+  {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    label: 'ESRI Dark'
+  },
+  {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    opts: { subdomains: 'abc' },
+    label: 'OSM (fallback claro)'
+  }
+];
+
+let currentProviderIdx = 0;
+let currentLayer = null;
+let errorCount = 0;
+
+function loadTileProvider(idx) {
+  if (idx >= tileProviders.length) return;
+  const p = tileProviders[idx];
+  if (currentLayer) map.removeLayer(currentLayer);
+  currentLayer = L.tileLayer(p.url, { maxZoom: 19, ...(p.opts || {}) });
+  errorCount = 0;
+  currentLayer.on('tileerror', () => {
+    errorCount++;
+    if (errorCount >= 3) {
+      currentProviderIdx++;
+      loadTileProvider(currentProviderIdx);
+      document.getElementById('notice').textContent = `⚠ DADOS DE EXEMPLO · Tiles: ${tileProviders[currentProviderIdx]?.label || 'indisponível'}`;
+    }
+  });
+  currentLayer.addTo(map);
+}
+
+loadTileProvider(0);
+map.on('mousemove',e=>{document.getElementById('crd').textContent=`LAT ${e.latlng.lat.toFixed(5)} · LNG ${e.latlng.lng.toFixed(5)}`});
+map.on('zoomend',()=>{document.getElementById('zv').textContent=map.getZoom()});
+setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString('pt-BR',{hour12:false})},1000);
+document.getElementById('clk').textContent=new Date().toLocaleTimeString('pt-BR',{hour12:false});
+
+const CAM=[
+  {lat:-30.0277,lng:-51.2287,name:"Câmera CEIC #C-001",addr:"Av. Borges de Medeiros, 1501",type:"Segurança Pública",modelo:"Hikvision DS-2CD2T47G2",fov:"120°",src:"CEIC/SMSU",st:"Ativo"},
+  {lat:-30.0311,lng:-51.2198,name:"Câmera CEIC #C-002",addr:"Largo Glênio Peres",type:"Monitoramento Praça",modelo:"Axis P3245-V",fov:"180°",src:"CEIC",st:"Ativo"},
+  {lat:-30.0388,lng:-51.2132,name:"Câmera CEIC #C-003",addr:"Av. Ipiranga, 6681",type:"Segurança Pública",modelo:"Intelbras VIP 3220",fov:"90°",src:"CEIC",st:"Ativo"},
+  {lat:-30.0499,lng:-51.2100,name:"Câmera EPTC #CE-018",addr:"Av. Nilo Peçanha, 1600",type:"Tráfego",modelo:"Pelco Spectra Enhanced",fov:"360°",src:"EPTC",st:"Ativo"},
+  {lat:-30.0166,lng:-51.2055,name:"Câmera CEIC #C-007",addr:"Shopping Iguatemi – externo",type:"Monitoramento",modelo:"Hikvision DS-2CD2T47G2",fov:"120°",src:"CEIC",st:"Ativo"},
+  {lat:-30.0285,lng:-51.2395,name:"Câmera EPTC #CE-022",addr:"Av. Padre Cacique, 100",type:"Tráfego",modelo:"Pelco VideoXpert",fov:"270°",src:"EPTC",st:"Manutenção"},
+  {lat:-30.0437,lng:-51.2250,name:"Câmera CEIC #C-011",addr:"Av. João Pessoa, 800",type:"Segurança Pública",modelo:"Axis Q6135-LE",fov:"360°",src:"CEIC",st:"Ativo"},
+  {lat:-30.0222,lng:-51.2301,name:"Câmera CEIC #C-015",addr:"Rua dos Andradas, 1200",type:"Monitoramento Pedestre",modelo:"Hanwha QNO-8080R",fov:"120°",src:"CEIC",st:"Ativo"},
+  {lat:-30.0350,lng:-51.2350,name:"Câmera CEIC #C-019",addr:"Av. Getúlio Vargas, 1200",type:"Segurança Pública",modelo:"Hikvision DS-2CD3T47G2",fov:"90°",src:"CEIC",st:"Ativo"},
+  {lat:-30.0470,lng:-51.2320,name:"Câmera EPTC #CE-031",addr:"Av. Cristóvão Colombo, 3000",type:"Tráfego",modelo:"Pelco Spectra Mini",fov:"270°",src:"EPTC",st:"Ativo"},
+  {lat:-30.0155,lng:-51.1980,name:"Câmera CEIC #C-021",addr:"Av. Assis Brasil, 4200",type:"Segurança Pública",modelo:"Dahua SD49425XB",fov:"360°",src:"CEIC",st:"Ativo"},
+  {lat:-30.0588,lng:-51.2200,name:"Câmera CEIC #C-025",addr:"Av. Azenha, 500",type:"Monitoramento",modelo:"Axis P3245-V",fov:"180°",src:"CEIC",st:"Inativo"},
+  {lat:-30.0323,lng:-51.2089,name:"Câmera OSM #OSM-004",addr:"Av. Protásio Alves, 2200",type:"Tráfego",modelo:"(não especificado)",fov:"—",src:"OpenStreetMap",st:"Ativo"},
+  {lat:-30.0267,lng:-51.2161,name:"Câmera CEIC #C-029",addr:"Praça Marechal Deodoro",type:"Monitoramento Praça",modelo:"Axis Q6135-LE",fov:"360°",src:"CEIC",st:"Ativo"},
+  {lat:-30.0430,lng:-51.2180,name:"Câmera CEIC #C-033",addr:"Av. Farrapos, 1000",type:"Segurança Pública",modelo:"Hikvision DS-2CD2T87G2",fov:"120°",src:"CEIC",st:"Ativo"},
+];
+const RAD=[
+  {lat:-30.0299,lng:-51.2248,name:"Radar EPTC #R-014",addr:"Av. Borges de Medeiros c/ R. Sete de Setembro",type:"Velocidade Fixa",vel:"60 km/h",equip:"Cinemometer AvaSpeed 3.0",src:"EPTC/DETRAN-RS",inf:214},
+  {lat:-30.0412,lng:-51.2175,name:"Radar EPTC #R-021",addr:"Av. Ipiranga, 4500",type:"Velocidade Fixa",vel:"60 km/h",equip:"Perkons PK-VELOVAR",src:"EPTC",inf:187},
+  {lat:-30.0198,lng:-51.2050,name:"Radar DETRAN #D-007",addr:"Av. Assis Brasil, 5200",type:"Velocidade Lombada",vel:"40 km/h",equip:"Perkons PK-VELOLASER",src:"DETRAN-RS",inf:89},
+  {lat:-30.0510,lng:-51.2280,name:"Radar EPTC #R-033",addr:"Av. Dom Pedro II, 2200",type:"Velocidade Fixa",vel:"60 km/h",equip:"Sievert Velox",src:"EPTC",inf:312},
+  {lat:-30.0340,lng:-51.2420,name:"Radar EPTC #R-041",addr:"Av. Padre Cacique, 650",type:"Velocidade Fixa",vel:"60 km/h",equip:"Cinemometer AvaSpeed 3.0",src:"EPTC",inf:156},
+  {lat:-30.0250,lng:-51.2350,name:"Radar EPTC #R-055",addr:"R. Voluntários da Pátria, 900",type:"Avanço Semáforo",vel:"—",equip:"IVS-2020 Citrex",src:"EPTC",inf:78},
+  {lat:-30.0460,lng:-51.2140,name:"Radar EPTC #R-062",addr:"Av. Cristóvão Colombo, 2600",type:"Velocidade Fixa",vel:"60 km/h",equip:"Perkons PK-VELOVAR",src:"EPTC",inf:203},
+  {lat:-30.0128,lng:-51.2130,name:"Radar DETRAN #D-012",addr:"Av. Bento Gonçalves, 3800",type:"Velocidade Fixa",vel:"60 km/h",equip:"Velox ZL2000",src:"DETRAN-RS",inf:145},
+  {lat:-30.0367,lng:-51.2090,name:"Radar EPTC #R-074",addr:"Av. Protásio Alves, 3300",type:"Velocidade Fixa",vel:"60 km/h",equip:"Perkons PK-VELOVAR",src:"EPTC",inf:167},
+  {lat:-30.0555,lng:-51.2350,name:"Radar EPTC #R-081",addr:"Av. Azenha, 200",type:"Avanço Semáforo",vel:"—",equip:"IVS-2020 Citrex",src:"EPTC",inf:92},
+];
+const SEN=[
+  {lat:-30.0315,lng:-51.2215,name:"Sensor EPTC #S-003",addr:"Av. Borges de Medeiros, 1800",type:"Laço Indutivo",var:"Fluxo + Velocidade",st:"Operacional",src:"EPTC/CTA"},
+  {lat:-30.0380,lng:-51.2160,name:"Sensor EPTC #S-011",addr:"Av. Ipiranga, 5800",type:"Câmera de Contagem",var:"Fluxo + Classificação",st:"Operacional",src:"EPTC"},
+  {lat:-30.0200,lng:-51.2210,name:"Sensor CTA #CTA-004",addr:"Av. Salgado Filho, 700",type:"Laço Indutivo",var:"Fluxo",st:"Falha",src:"CTA/EPTC"},
+  {lat:-30.0490,lng:-51.2230,name:"Sensor EPTC #S-019",addr:"Av. Cristóvão Colombo, 2200",type:"Radar Doppler",var:"Velocidade + Fluxo",st:"Operacional",src:"EPTC"},
+  {lat:-30.0420,lng:-51.2300,name:"Sensor CTA #CTA-008",addr:"Av. Dom Pedro II, 1800",type:"Laço Indutivo",var:"Fluxo",st:"Operacional",src:"CTA"},
+  {lat:-30.0270,lng:-51.2290,name:"Sensor EPTC #S-025",addr:"R. Voluntários da Pátria, 600",type:"Câmera de Contagem",var:"Fluxo + Classificação",st:"Operacional",src:"EPTC"},
+  {lat:-30.0144,lng:-51.2070,name:"Sensor CTA #CTA-014",addr:"Av. Assis Brasil, 4800",type:"Laço Indutivo",var:"Fluxo",st:"Manutenção",src:"CTA"},
+  {lat:-30.0356,lng:-51.2080,name:"Sensor EPTC #S-031",addr:"Av. Protásio Alves, 3000",type:"Radar Doppler",var:"Velocidade + Fluxo",st:"Operacional",src:"EPTC"},
+];
+const TOR=[
+  {lat:-30.0300,lng:-51.2200,name:"Torre PMERGS #T-001",addr:"Sede BM – Av. João Pessoa, 2050",tipo:"Rádio UHF",op:"PMERGS",freqs:"460–470 MHz",src:"ANATEL/Licitação"},
+  {lat:-30.0170,lng:-51.2100,name:"Torre SMSEG #T-004",addr:"Subpref. Norte – Av. Assis Brasil, 4220",tipo:"Rádio TETRA",op:"SMSEG/CEIC",freqs:"380–400 MHz",src:"ANATEL"},
+  {lat:-30.0470,lng:-51.2350,name:"Torre CEIC #T-008",addr:"Subest. Sul – Av. Azenha, 820",tipo:"Fibra + Rádio",op:"CEIC",freqs:"Backbone Fibra",src:"Licitação CEIC 2022"},
+  {lat:-30.0350,lng:-51.2050,name:"Torre BM #T-011",addr:"10° BPM – Av. Protásio Alves, 3460",tipo:"Rádio VHF/UHF",op:"PMERGS",freqs:"150–470 MHz",src:"ANATEL"},
+  {lat:-30.0230,lng:-51.2390,name:"Torre CEIC #T-015",addr:"Cais do Porto – Av. Mauá, 1050",tipo:"Rádio Microondas",op:"CEIC",freqs:"7–11 GHz",src:"ANATEL/CEIC"},
+];
+
+function icon(t){
+  const e={cam:'📷',radar:'📡',sensor:'🔵',radio:'📶'};
+  const c={cam:'mc',radar:'mr',sensor:'ms',radio:'mt'};
+  return L.divIcon({html:`<div class="mk ${c[t]}" style="width:26px;height:26px">${e[t]}</div>`,className:'',iconSize:[26,26],iconAnchor:[13,13]});
+}
+function bdg(st){
+  const m={Ativo:'bg',Operacional:'bg',Inativo:'br',Manutenção:'ba',Falha:'br'};
+  return st?`<span class="bd ${m[st]||'bb'}">${st}</span>`:'';
+}
+function ui(h){document.getElementById('ic').innerHTML=h}
+function f(k,v,c=''){return `<div class="if"><div class="ik">${k}</div><div class="iv"${c?` style="color:${c}"`:''}>${v}</div></div>`}
+function cr(lat,lng){return `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)"><div class="ik">Coords</div><div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);margin-top:2px">${lat.toFixed(5)}, ${lng.toFixed(5)}</div></div>`}
+
+const LY={cam:L.layerGroup(),radar:L.layerGroup(),sensor:L.layerGroup(),radio:L.layerGroup()};
+
+CAM.forEach(d=>{
+  const m=L.marker([d.lat,d.lng],{icon:icon('cam')});
+  m.bindPopup(`<div class="pi"><div class="pt" style="color:var(--green)">▸ CÂMERA DE SEGURANÇA</div><div class="pti">${d.name}</div><div class="pr"><span class="k">Endereço</span><span class="v">${d.addr}</span></div><div class="pr"><span class="k">Tipo</span><span class="v">${d.type}</span></div><div class="pr"><span class="k">Modelo</span><span class="v">${d.modelo}</span></div><div class="pr"><span class="k">Campo Visual</span><span class="v">${d.fov}</span></div><div class="pr"><span class="k">Status</span><span class="v">${bdg(d.st)}</span></div><div class="psrc">FONTE: ${d.src}</div></div>`,{maxWidth:300});
+  m.on('click',()=>ui(`<div style="padding:13px 15px">${f('Câmera',d.name,'var(--green)')}${f('Localização',d.addr)}${f('Tipo',d.type)}${f('Modelo',d.modelo)}${f('Status',bdg(d.st))}${cr(d.lat,d.lng)}</div>`));
+  LY.cam.addLayer(m);
+});
+RAD.forEach(d=>{
+  const m=L.marker([d.lat,d.lng],{icon:icon('radar')});
+  m.bindPopup(`<div class="pi"><div class="pt" style="color:var(--amber)">▸ RADAR DE FISCALIZAÇÃO</div><div class="pti">${d.name}</div><div class="pr"><span class="k">Endereço</span><span class="v">${d.addr}</span></div><div class="pr"><span class="k">Tipo</span><span class="v">${d.type}</span></div><div class="pr"><span class="k">Vel. Limite</span><span class="v">${d.vel}</span></div><div class="pr"><span class="k">Equipamento</span><span class="v">${d.equip}</span></div><div class="pr"><span class="k">Infrações/Mês</span><span class="v">${d.inf}</span></div><div class="psrc">FONTE: ${d.src}</div></div>`,{maxWidth:300});
+  m.on('click',()=>ui(`<div style="padding:13px 15px">${f('Radar',d.name,'var(--amber)')}${f('Localização',d.addr)}${f('Tipo',d.type)}${f('Vel. Limite',d.vel)}${f('Infrações/Mês',`<span style="color:var(--amber)">${d.inf}</span>`)}${cr(d.lat,d.lng)}</div>`));
+  LY.radar.addLayer(m);
+});
+SEN.forEach(d=>{
+  const m=L.marker([d.lat,d.lng],{icon:icon('sensor')});
+  m.bindPopup(`<div class="pi"><div class="pt" style="color:var(--blue)">▸ SENSOR DE TRÁFEGO</div><div class="pti">${d.name}</div><div class="pr"><span class="k">Endereço</span><span class="v">${d.addr}</span></div><div class="pr"><span class="k">Tipo</span><span class="v">${d.type}</span></div><div class="pr"><span class="k">Variáveis</span><span class="v">${d.var}</span></div><div class="pr"><span class="k">Status</span><span class="v">${bdg(d.st)}</span></div><div class="psrc">FONTE: ${d.src}</div></div>`,{maxWidth:300});
+  m.on('click',()=>ui(`<div style="padding:13px 15px">${f('Sensor',d.name,'var(--blue)')}${f('Localização',d.addr)}${f('Tipo',d.type)}${f('Variáveis',d.var)}${f('Status',bdg(d.st))}${cr(d.lat,d.lng)}</div>`));
+  LY.sensor.addLayer(m);
+});
+TOR.forEach(d=>{
+  const m=L.marker([d.lat,d.lng],{icon:icon('radio')});
+  m.bindPopup(`<div class="pi"><div class="pt" style="color:var(--purple)">▸ TORRE / RÁDIO</div><div class="pti">${d.name}</div><div class="pr"><span class="k">Endereço</span><span class="v">${d.addr}</span></div><div class="pr"><span class="k">Tipo</span><span class="v">${d.tipo}</span></div><div class="pr"><span class="k">Operadora</span><span class="v">${d.op}</span></div><div class="pr"><span class="k">Frequências</span><span class="v">${d.freqs}</span></div><div class="psrc">FONTE: ${d.src}</div></div>`,{maxWidth:300});
+  m.on('click',()=>ui(`<div style="padding:13px 15px">${f('Torre',d.name,'var(--purple)')}${f('Localização',d.addr)}${f('Tipo',d.tipo)}${f('Operadora',d.op)}${f('Frequências',d.freqs)}${cr(d.lat,d.lng)}</div>`));
+  LY.radio.addLayer(m);
+});
+
+Object.values(LY).forEach(l=>l.addTo(map));
+document.getElementById('cc').textContent=CAM.length;
+document.getElementById('rc').textContent=RAD.length;
+document.getElementById('sc').textContent=SEN.length;
+document.getElementById('tc').textContent=TOR.length;
+
+const ST={cam:true,radar:true,sensor:true,radio:true};
+const SC={cam:'on',radar:'ao',sensor:'bo',radio:'po'};
+function tl(n,el){
+  ST[n]=!ST[n];
+  const sw=document.getElementById(`sw-${n}`);
+  if(ST[n]){LY[n].addTo(map);sw.classList.add(SC[n]);el.classList.add('active')}
+  else{map.removeLayer(LY[n]);sw.classList.remove(SC[n]);el.classList.remove('active')}
+}
+</script>
+</body>
+</html>
